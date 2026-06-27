@@ -1,6 +1,6 @@
 """
 Модуль с классами Product и Category для интернет-магазина.
-Теперь с приватными атрибутами, геттерами, сеттерами и класс-методами.
+Реализована инкапсуляция: приватные атрибуты, геттеры, сеттеры, класс-метод.
 """
 
 import json
@@ -9,24 +9,28 @@ from typing import List, Optional
 
 class Product:
     """Товар интернет-магазина."""
+
     def __init__(self, name: str, description: str, price: float, quantity: int) -> None:
         self.name = name
         self.description = description
-        self._price = price          # приватная цена
+        self.__price = price          # приватный атрибут с двойным подчёркиванием
         self.quantity = quantity
 
     @property
     def price(self) -> float:
-        """Геттер для цены."""
-        return self._price
+        """Геттер для цены (возвращает значение приватного атрибута)."""
+        return self.__price
 
     @price.setter
     def price(self, new_price: float) -> None:
-        """Сеттер для цены с проверкой на положительность."""
+        """
+        Сеттер для цены с проверкой на положительность.
+        Если цена <= 0, выводится сообщение и цена не меняется.
+        """
         if new_price <= 0:
             print("Цена не должна быть нулевая или отрицательная")
             return
-        self._price = new_price
+        self.__price = new_price
 
     @classmethod
     def new_product(cls, product_data: dict, existing_products: Optional[List['Product']] = None) -> 'Product':
@@ -40,13 +44,13 @@ class Product:
         price = product_data['price']
         quantity = product_data['quantity']
 
-        # Проверка дубликатов (доп. задание)
+        # Дополнительное задание: проверка дубликатов
         if existing_products is not None:
             for existing in existing_products:
                 if existing.name.lower() == name.lower():
                     # Складываем количество
                     existing.quantity += quantity
-                    # Выбираем максимальную цену
+                    # Выбираем максимальную цену (через сеттер)
                     if price > existing.price:
                         existing.price = price
                     return existing
@@ -63,13 +67,15 @@ class Category:
     def __init__(self, name: str, description: str, products: List[Product]) -> None:
         self.name = name
         self.description = description
-        self._products = products  # теперь приватный
+        self._products = products          # приватный атрибут (одно подчёркивание — защищённый)
 
         Category.category_count += 1
         Category.product_count += len(products)
 
     def add_product(self, product: Product) -> None:
-        """Добавляет продукт в категорию и обновляет счётчик."""
+        """
+        Добавляет продукт в категорию и обновляет общий счётчик товаров.
+        """
         self._products.append(product)
         Category.product_count += 1
 
@@ -97,22 +103,17 @@ def load_products_from_json(file_path: str) -> List[Category]:
         return []
 
     categories = []
-    all_products: List[Product] = []  # для проверки дубликатов при создании (доп. задание)
+    all_products: List[Product] = []   # для проверки дубликатов
 
     for cat_data in data:
         products = []
         for product_data in cat_data.get('products', []):
-            # Используем класс-метод new_product для создания продуктов с учётом дубликатов
-            # Передаём список всех уже созданных продуктов для проверки
+            # Используем класс-метод для создания продукта с учётом дубликатов
             product = Product.new_product(product_data, all_products)
-            # Если продукт уже существовал, он не будет добавлен повторно, но мы должны учесть это.
-            # Для простоты будем добавлять только если продукт новый (его нет в all_products)
+            # Если продукт новый — добавляем в текущую категорию и в общий список
             if product not in products and product not in all_products:
                 products.append(product)
                 all_products.append(product)
-            # Если продукт уже был в all_products, он уже добавлен, но quantity и price обновлены через new_product
-            # В этом случае мы не добавляем его повторно, чтобы избежать дублирования в списке.
         category = Category(cat_data['name'], cat_data['description'], products)
         categories.append(category)
     return categories
-
