@@ -1,3 +1,7 @@
+"""
+Тесты для классов Product и Category.
+"""
+
 import json
 import tempfile
 import os
@@ -34,7 +38,9 @@ def test_category_initialization() -> None:
     p2 = Product("Клавиатура", "Механическая", 80.0, 20)
     cat = Category("Электроника", "Разные гаджеты", [p1, p2])
     assert cat.name == "Электроника"
-    assert len(cat._products) == 2
+    # Проверяем через геттер (не обращаемся к приватному атрибуту)
+    assert "Мышь" in cat.products
+    assert "Клавиатура" in cat.products
 
 
 def test_category_add_product() -> None:
@@ -42,7 +48,9 @@ def test_category_add_product() -> None:
     cat = Category("Электроника", "Гаджеты", [p1])
     p2 = Product("Клавиатура", "Механическая", 80.0, 20)
     cat.add_product(p2)
-    assert len(cat._products) == 2
+    # Проверяем через геттер
+    assert "Мышь" in cat.products
+    assert "Клавиатура" in cat.products
     assert Category.product_count == 2
 
 
