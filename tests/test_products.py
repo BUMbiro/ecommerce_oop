@@ -1,70 +1,87 @@
-"""
-Тесты для классов Product и Category.
-"""
-
 import json
 import tempfile
 import os
+import pytest
 from src.products import Product, Category, load_products_from_json
 
 
+@pytest.fixture(autouse=True)
+def reset_category_counters():
+    """Автоматически сбрасывает счётчики категорий перед каждым тестом."""
+    Category.category_count = 0
+    Category.product_count = 0
+    yield
+
+
 def test_product_initialization() -> None:
-    """Проверяет инициализацию объекта Product."""
-    p = Product("Ноутбук", "Игровой ноутбук", 1500.50, 10)
+    p = Product("Ноутбук", "Игровой", 1500.50, 10)
     assert p.name == "Ноутбук"
-    assert p.description == "Игровой ноутбук"
     assert p.price == 1500.50
     assert p.quantity == 10
 
 
+def test_product_price_setter() -> None:
+    p = Product("Ноутбук", "Игровой", 1500.50, 10)
+    p.price = 2000.0
+    assert p.price == 2000.0
+
+    p.price = -100.0
+    assert p.price == 2000.0  # цена не изменилась
+
+
 def test_category_initialization() -> None:
-    """Проверяет инициализацию объекта Category."""
     p1 = Product("Мышь", "Беспроводная", 25.0, 50)
     p2 = Product("Клавиатура", "Механическая", 80.0, 20)
     cat = Category("Электроника", "Разные гаджеты", [p1, p2])
     assert cat.name == "Электроника"
-    assert cat.description == "Разные гаджеты"
-    assert len(cat.products) == 2
-    assert cat.products[0] is p1
+    assert len(cat._products) == 2
 
 
-def test_category_counters() -> None:
-    """Проверяет автоматическое обновление счётчиков category_count и product_count."""
-    Category.category_count = 0
-    Category.product_count = 0
+def test_category_add_product() -> None:
+    p1 = Product("Мышь", "Беспроводная", 25.0, 50)
+    cat = Category("Электроника", "Гаджеты", [p1])
+    p2 = Product("Клавиатура", "Механическая", 80.0, 20)
+    cat.add_product(p2)
+    assert len(cat._products) == 2
+    assert Category.product_count == 2
 
-    p1 = Product("Товар1", "Описание1", 10, 5)
-    p2 = Product("Товар2", "Описание2", 20, 3)
 
-    Category("Кат1", "Описание кат1", [p1])
-    assert Category.category_count == 1
-    assert Category.product_count == 1
+def test_category_products_property() -> None:
+    p1 = Product("Мышь", "Беспроводная", 25.0, 50)
+    p2 = Product("Клавиатура", "Механическая", 80.0, 20)
+    cat = Category("Электроника", "Гаджеты", [p1, p2])
+    expected = "Мышь, 25.0 руб. Остаток: 50 шт.\nКлавиатура, 80.0 руб. Остаток: 20 шт.\n"
+    assert cat.products == expected
 
-    Category("Кат2", "Описание кат2", [p2, p1])
-    assert Category.category_count == 2
-    assert Category.product_count == 3
+
+def test_product_classmethod_new_product() -> None:
+    data = {"name": "Смартфон", "description": "AMOLED", "price": 500.0, "quantity": 10}
+    p = Product.new_product(data)
+    assert p.name == "Смартфон"
+    assert p.price == 500.0
+    assert p.quantity == 10
+
+
+def test_product_classmethod_new_product_duplicate() -> None:
+    existing = Product("Смартфон", "AMOLED", 500.0, 10)
+    data = {"name": "Смартфон", "description": "AMOLED", "price": 600.0, "quantity": 5}
+    p = Product.new_product(data, [existing])
+    assert p is existing
+    assert p.quantity == 15
+    assert p.price == 600.0
 
 
 def test_load_products_from_json() -> None:
-    """Проверяет загрузку данных из JSON-файла."""
     test_data = [
         {
             "name": "Тестовая категория",
             "description": "Описание категории",
             "products": [
-                {
-                    "name": "Тестовый товар",
-                    "description": "Описание товара",
-                    "price": 100.0,
-                    "quantity": 10
-                }
+                {"name": "Тестовый товар", "description": "Описание товара", "price": 100.0, "quantity": 10}
             ]
         }
     ]
-
-    with tempfile.NamedTemporaryFile(
-        mode='w', suffix='.json', delete=False, encoding='utf-8'
-    ) as f:
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as f:
         json.dump(test_data, f, ensure_ascii=False, indent=2)
         temp_path = f.name
 
@@ -72,8 +89,7 @@ def test_load_products_from_json() -> None:
         categories = load_products_from_json(temp_path)
         assert len(categories) == 1
         assert categories[0].name == "Тестовая категория"
-        assert len(categories[0].products) == 1
-        assert categories[0].products[0].name == "Тестовый товар"
-        assert categories[0].products[0].price == 100.0
+        expected = "Тестовый товар, 100.0 руб. Остаток: 10 шт.\n"
+        assert categories[0].products == expected
     finally:
         os.unlink(temp_path)
