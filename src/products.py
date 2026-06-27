@@ -115,3 +115,4 @@ def load_products_from_json(file_path: str) -> List[Category]:
         category = Category(cat_data['name'], cat_data['description'], products)
         categories.append(category)
     return categories
+
