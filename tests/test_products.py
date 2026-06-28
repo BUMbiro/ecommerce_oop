@@ -1,12 +1,12 @@
 """
-Тесты для классов Product и Category.
+Тесты для классов Product, Category и CategoryIterator.
 """
 
 import json
 import tempfile
 import os
 import pytest
-from src.products import Product, Category, load_products_from_json
+from src.products import Product, Category, CategoryIterator, load_products_from_json
 
 
 @pytest.fixture(autouse=True)
@@ -101,3 +101,65 @@ def test_load_products_from_json() -> None:
         assert categories[0].products == expected
     finally:
         os.unlink(temp_path)
+
+
+# ---------- Новые тесты для магических методов ----------
+
+def test_product_str() -> None:
+    p = Product("Ноутбук", "Игровой", 1500.50, 10)
+    assert str(p) == "Ноутбук, 1500.5 руб. Остаток: 10 шт."
+
+
+def test_category_str() -> None:
+    p1 = Product("Мышь", "Беспроводная", 25.0, 50)
+    p2 = Product("Клавиатура", "Механическая", 80.0, 20)
+    cat = Category("Электроника", "Гаджеты", [p1, p2])
+    assert str(cat) == "Электроника, количество продуктов: 70 шт."
+
+
+def test_product_add() -> None:
+    p1 = Product("Товар А", "Описание", 100, 10)
+    p2 = Product("Товар Б", "Описание", 200, 2)
+    assert p1 + p2 == 100 * 10 + 200 * 2  # 1400
+
+
+def test_product_add_type_error() -> None:
+    p1 = Product("Товар А", "Описание", 100, 10)
+    with pytest.raises(TypeError, match="Складывать можно только объекты Product"):
+        p1 + 100  # передаём int, mypy не ругается, т.к. сигнатура (object)
+
+
+# ---------- Тесты для итератора (доп. задание) ----------
+
+def test_category_iterator() -> None:
+    p1 = Product("Мышь", "Беспроводная", 25.0, 50)
+    p2 = Product("Клавиатура", "Механическая", 80.0, 20)
+    cat = Category("Электроника", "Гаджеты", [p1, p2])
+
+    # Проверяем явное использование CategoryIterator
+    iterator = CategoryIterator(cat)
+    products_from_iter = list(iterator)
+    assert products_from_iter == [p1, p2]
+
+    # Проверяем, что можно итерировать напрямую через __iter__ в Category
+    products_from_for = []
+    for product in cat:
+        products_from_for.append(product)
+    assert products_from_for == [p1, p2]
+
+    # Проверяем, что итератор поднимает StopIteration корректно
+    it = iter(cat)
+    next(it)  # p1
+    next(it)  # p2
+    with pytest.raises(StopIteration):
+        next(it)
+
+
+def test_category_iterator_empty_category() -> None:
+    cat = Category("Пустая", "Без товаров", [])
+    # Явный итератор
+    iterator = CategoryIterator(cat)
+    assert list(iterator) == []
+    # Цикл for
+    for _ in cat:
+        assert False, "Цикл не должен выполняться"
