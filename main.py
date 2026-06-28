@@ -1,6 +1,7 @@
 from src.products import Product, Category
 
 if __name__ == "__main__":
+    # Создаём товары
     product1 = Product(
         "Samsung Galaxy S23 Ultra",
         "256GB, Серый цвет, 200MP камера",
@@ -19,56 +20,64 @@ if __name__ == "__main__":
         31000.0,
         14
     )
-
-    print(product1.name)
-    print(product1.description)
-    print(product1.price)
-    print(product1.quantity)
-
-    print(product2.name)
-    print(product2.description)
-    print(product2.price)
-    print(product2.quantity)
-
-    print(product3.name)
-    print(product3.description)
-    print(product3.price)
-    print(product3.quantity)
-
-    category1 = Category(
-        "Смартфоны",
-        (
-            "Смартфоны, как средство не только коммуникации, "
-            "но и получения дополнительных функций для удобства жизни"
-        ),
-        [product1, product2, product3]
-    )
-
-    print(category1.name == "Смартфоны")
-    print(category1.description)
-    print(len(category1.products))
-    print(category1.category_count)
-    print(category1.product_count)
-
     product4 = Product(
-        "55\" QLED 4K",
+        '55" QLED 4K',
         "Фоновая подсветка",
         123000.0,
         7
     )
+
+    # Создаём категории
+    category1 = Category(
+        "Смартфоны",
+        "Смартфоны, как средство не только коммуникации, но и получения дополнительных функций для удобства жизни",
+        [product1, product2, product3]
+    )
     category2 = Category(
         "Телевизоры",
-        (
-            "Современный телевизор, который позволяет наслаждаться просмотром, "
-            "станет вашим другом и помощником"
-        ),
+        "Современный телевизор, который позволяет наслаждаться просмотром, станет вашим другом и помощником",
         [product4]
     )
 
-    print(category2.name)
-    print(category2.description)
-    print(len(category2.products))
-    print(category2.products)
+    # ---- Демонстрация __str__ ----
+    print("=" * 50)
+    print("Товары (__str__):")
+    print(product1)
+    print(product2)
+    print(product3)
+    print(product4)
+    print()
 
-    print(Category.category_count)
-    print(Category.product_count)
+    # ---- Демонстрация __str__ для категорий ----
+    print("=" * 50)
+    print("Категории (__str__):")
+    print(category1)
+    print(category2)
+    print()
+
+    # ---- Демонстрация геттера products (вывод списка товаров) ----
+    print("=" * 50)
+    print("Список товаров в категории 'Смартфоны':")
+    print(category1.products)
+    print()
+
+    # ---- Демонстрация __add__ (сложение товаров) ----
+    print("=" * 50)
+    print("Сложение товаров (общая стоимость на складе):")
+    print(f"{product1.name} + {product2.name} = {product1 + product2} руб.")
+    print(f"{product1.name} + {product3.name} = {product1 + product3} руб.")
+    print(f"{product2.name} + {product3.name} = {product2 + product3} руб.")
+    print()
+
+    # ---- Демонстрация итератора (for product in category) ----
+    print("=" * 50)
+    print("Перебор товаров в категории 'Смартфоны' (итератор):")
+    for product in category1:
+        print(f"  - {product}")
+    print()
+
+    # ---- Статистика ----
+    print("=" * 50)
+    print("Статистика:")
+    print(f"Всего категорий: {Category.category_count}")
+    print(f"Всего товаров (уникальных): {Category.product_count}")
