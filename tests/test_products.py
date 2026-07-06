@@ -1,21 +1,22 @@
 """
-Тесты для классов Product, Category и CategoryIterator.
+Тесты для классов Product, Category, CategoryIterator, Smartphone, LawnGrass.
 """
 
 import json
 import tempfile
 import os
 import pytest
-from src.products import Product, Category, CategoryIterator, load_products_from_json
+from src.products import Product, Category, CategoryIterator, Smartphone, LawnGrass, load_products_from_json
 
 
 @pytest.fixture(autouse=True)
 def reset_category_counters():
-    """Автоматически сбрасывает счётчики категорий перед каждым тестом."""
     Category.category_count = 0
     Category.product_count = 0
     yield
 
+
+# ---------- Старые тесты (без изменений) ----------
 
 def test_product_initialization() -> None:
     p = Product("Ноутбук", "Игровой", 1500.50, 10)
@@ -28,9 +29,8 @@ def test_product_price_setter() -> None:
     p = Product("Ноутбук", "Игровой", 1500.50, 10)
     p.price = 2000.0
     assert p.price == 2000.0
-
     p.price = -100.0
-    assert p.price == 2000.0  # цена не изменилась
+    assert p.price == 2000.0
 
 
 def test_category_initialization() -> None:
@@ -38,7 +38,6 @@ def test_category_initialization() -> None:
     p2 = Product("Клавиатура", "Механическая", 80.0, 20)
     cat = Category("Электроника", "Разные гаджеты", [p1, p2])
     assert cat.name == "Электроника"
-    # Проверяем через геттер (не обращаемся к приватному атрибуту)
     assert "Мышь" in cat.products
     assert "Клавиатура" in cat.products
 
@@ -48,7 +47,6 @@ def test_category_add_product() -> None:
     cat = Category("Электроника", "Гаджеты", [p1])
     p2 = Product("Клавиатура", "Механическая", 80.0, 20)
     cat.add_product(p2)
-    # Проверяем через геттер
     assert "Мышь" in cat.products
     assert "Клавиатура" in cat.products
     assert Category.product_count == 2
@@ -92,7 +90,6 @@ def test_load_products_from_json() -> None:
     with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as f:
         json.dump(test_data, f, ensure_ascii=False, indent=2)
         temp_path = f.name
-
     try:
         categories = load_products_from_json(temp_path)
         assert len(categories) == 1
@@ -102,8 +99,6 @@ def test_load_products_from_json() -> None:
     finally:
         os.unlink(temp_path)
 
-
-# ---------- Новые тесты для магических методов ----------
 
 def test_product_str() -> None:
     p = Product("Ноутбук", "Игровой", 1500.50, 10)
@@ -120,46 +115,97 @@ def test_category_str() -> None:
 def test_product_add() -> None:
     p1 = Product("Товар А", "Описание", 100, 10)
     p2 = Product("Товар Б", "Описание", 200, 2)
-    assert p1 + p2 == 100 * 10 + 200 * 2  # 1400
+    assert p1 + p2 == 1400
 
 
 def test_product_add_type_error() -> None:
     p1 = Product("Товар А", "Описание", 100, 10)
     with pytest.raises(TypeError, match="Складывать можно только объекты Product"):
-        p1 + 100  # передаём int, mypy не ругается, т.к. сигнатура (object)
+        p1 + 100
 
-
-# ---------- Тесты для итератора (доп. задание) ----------
 
 def test_category_iterator() -> None:
     p1 = Product("Мышь", "Беспроводная", 25.0, 50)
     p2 = Product("Клавиатура", "Механическая", 80.0, 20)
     cat = Category("Электроника", "Гаджеты", [p1, p2])
-
-    # Проверяем явное использование CategoryIterator
     iterator = CategoryIterator(cat)
     products_from_iter = list(iterator)
     assert products_from_iter == [p1, p2]
-
-    # Проверяем, что можно итерировать напрямую через __iter__ в Category
     products_from_for = []
     for product in cat:
         products_from_for.append(product)
     assert products_from_for == [p1, p2]
-
-    # Проверяем, что итератор поднимает StopIteration корректно
     it = iter(cat)
-    next(it)  # p1
-    next(it)  # p2
+    next(it)
+    next(it)
     with pytest.raises(StopIteration):
         next(it)
 
 
 def test_category_iterator_empty_category() -> None:
     cat = Category("Пустая", "Без товаров", [])
-    # Явный итератор
     iterator = CategoryIterator(cat)
     assert list(iterator) == []
-    # Цикл for
     for _ in cat:
-        assert False, "Цикл не должен выполняться"
+        assert False
+
+
+# ---------- Новые тесты для классов-наследников (исправлены типы) ----------
+
+def test_smartphone_creation() -> None:
+    phone = Smartphone("Samsung", "Флагман", 1000.0, 5,
+                       95.5, "S23", 256, "Черный")  # efficiency — float
+    assert phone.name == "Samsung"
+    assert phone.price == 1000.0
+    assert phone.quantity == 5
+    assert phone.efficiency == 95.5
+    assert phone.model == "S23"
+    assert phone.memory == 256
+    assert phone.color == "Черный"
+    assert isinstance(phone, Product)
+
+
+def test_lawn_grass_creation() -> None:
+    grass = LawnGrass("Газон", "Спорт", 50.0, 100,
+                      "Россия", "14 дней", "Зелёный")  # germination_period — строка
+    assert grass.name == "Газон"
+    assert grass.price == 50.0
+    assert grass.quantity == 100
+    assert grass.country == "Россия"
+    assert grass.germination_period == "14 дней"
+    assert grass.color == "Зелёный"
+    assert isinstance(grass, Product)
+
+
+def test_add_same_class_products_works() -> None:
+    p1 = Product("Товар А", "", 100, 10)
+    p2 = Product("Товар Б", "", 200, 2)
+    assert p1 + p2 == 1400
+
+    phone1 = Smartphone("Samsung", "", 1000, 5, 95.5, "S23", 256, "Черный")
+    phone2 = Smartphone("Apple", "", 1200, 3, 98.2, "15", 512, "Серебро")
+    assert phone1 + phone2 == 1000 * 5 + 1200 * 3  # 8600
+
+
+def test_add_different_classes_raises_type_error() -> None:
+    phone = Smartphone("Samsung", "", 1000, 5, 95.5, "S23", 256, "Черный")
+    grass = LawnGrass("Газон", "", 50, 100, "Россия", "14 дней", "Зелёный")
+    with pytest.raises(TypeError, match="Нельзя складывать Smartphone и LawnGrass"):
+        phone + grass
+
+    product = Product("Ноутбук", "", 1500, 3)
+    with pytest.raises(TypeError, match="Нельзя складывать Product и Smartphone"):
+        product + phone
+
+
+def test_add_product_to_category_with_wrong_type_raises() -> None:
+    cat = Category("Тест", "Описание", [])
+    with pytest.raises(TypeError, match="можно добавлять только объекты Product"):
+        cat.add_product("not a product")
+    with pytest.raises(TypeError, match="можно добавлять только объекты Product"):
+        cat.add_product(123)
+    # Но можно добавить наследника
+    phone = Smartphone("Samsung", "", 1000, 5, 95.5, "S23", 256, "Черный")
+    cat.add_product(phone)
+    assert Category.product_count == 1
+    assert "Samsung" in cat.products
