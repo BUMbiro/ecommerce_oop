@@ -1,7 +1,6 @@
 """
-Модуль с классами Product, Category и CategoryIterator для интернет-магазина.
-Реализована инкапсуляция: приватные атрибуты, геттеры, сеттеры, класс-метод.
-Добавлены магические методы __str__, __add__, а также итератор для категорий.
+Модуль с классами Product, Category, CategoryIterator, Smartphone, LawnGrass.
+Реализована инкапсуляция, магические методы, наследование, проверка типов.
 """
 
 import json
@@ -9,22 +8,20 @@ from typing import List, Optional
 
 
 class Product:
-    """Товар интернет-магазина."""
+    """Базовый класс для товаров интернет-магазина."""
 
     def __init__(self, name: str, description: str, price: float, quantity: int) -> None:
         self.name = name
         self.description = description
-        self.__price = price          # приватный атрибут (двойное подчёркивание)
+        self.__price = price
         self.quantity = quantity
 
     @property
     def price(self) -> float:
-        """Геттер для цены."""
         return self.__price
 
     @price.setter
     def price(self, new_price: float) -> None:
-        """Сеттер для цены с проверкой на положительность."""
         if new_price <= 0:
             print("Цена не должна быть нулевая или отрицательная")
             return
@@ -32,11 +29,6 @@ class Product:
 
     @classmethod
     def new_product(cls, product_data: dict, existing_products: Optional[List['Product']] = None) -> 'Product':
-        """
-        Класс-метод для создания продукта из словаря.
-        Если передан список existing_products, проверяет дубликаты по имени:
-        - если дубликат найден, складывает количество и выбирает максимальную цену.
-        """
         name = product_data['name']
         description = product_data['description']
         price = product_data['price']
@@ -53,17 +45,39 @@ class Product:
         return cls(name, description, price, quantity)
 
     def __str__(self) -> str:
-        """Строковое представление товара."""
         return f"{self.name}, {self.price} руб. Остаток: {self.quantity} шт."
 
     def __add__(self, other: object) -> float:
         """
-        Сложение двух товаров: сумма стоимости всех товаров на складе.
-        Сигнатура с object для совместимости с mypy (в тестах передаём int).
+        Сложение товаров только если они одного класса.
+        Проверка через type().
         """
         if not isinstance(other, Product):
-            raise TypeError("Складывать можно только объекты Product")
+            raise TypeError("Складывать можно только объекты Product и его наследников")
+        if type(self) is not type(other):
+            raise TypeError(f"Нельзя складывать {type(self).__name__} и {type(other).__name__}")
         return self.price * self.quantity + other.price * other.quantity
+
+
+class Smartphone(Product):
+    """Класс Смартфон — наследник Product."""
+    def __init__(self, name: str, description: str, price: float, quantity: int,
+                 efficiency: float, model: str, memory: int, color: str):
+        super().__init__(name, description, price, quantity)
+        self.efficiency = efficiency
+        self.model = model
+        self.memory = memory
+        self.color = color
+
+
+class LawnGrass(Product):
+    """Класс Трава газонная — наследник Product."""
+    def __init__(self, name: str, description: str, price: float, quantity: int,
+                 country: str, germination_period: str, color: str):
+        super().__init__(name, description, price, quantity)
+        self.country = country
+        self.germination_period = germination_period
+        self.color = color
 
 
 class Category:
@@ -74,43 +88,38 @@ class Category:
     def __init__(self, name: str, description: str, products: List[Product]) -> None:
         self.name = name
         self.description = description
-        self.__products = products          # приватный (двойное подчёркивание)
+        self.__products = products
 
         Category.category_count += 1
         Category.product_count += len(products)
 
-    def add_product(self, product: Product) -> None:
-        """Добавляет продукт в категорию и обновляет счётчик."""
+    def add_product(self, product: object) -> None:
+        """
+        Добавляет продукт в категорию.
+        Проверка через isinstance(), что добавляется только Product или наследник.
+        """
+        if not isinstance(product, Product):
+            raise TypeError("В категорию можно добавлять только объекты Product или его наследников")
         self.__products.append(product)
         Category.product_count += 1
 
     @property
     def products(self) -> str:
-        """
-        Геттер для списка продуктов. Возвращает строку с продуктами,
-        используя __str__ каждого продукта.
-        """
         return "\n".join(str(p) for p in self.__products) + ("\n" if self.__products else "")
 
     def __str__(self) -> str:
-        """Строковое представление категории: название и общее количество товаров на складе."""
         total_quantity = sum(p.quantity for p in self.__products)
         return f"{self.name}, количество продуктов: {total_quantity} шт."
 
     def get_products(self) -> List[Product]:
-        """
-        Публичный метод для доступа к списку товаров (нужен для итератора).
-        Возвращает список продуктов категории.
-        """
         return self.__products
 
     def __iter__(self):
-        """Возвращает итератор для перебора товаров в категории."""
         return CategoryIterator(self)
 
 
 class CategoryIterator:
-    """Итератор для перебора товаров в категории (вспомогательный класс)."""
+    """Итератор для перебора товаров в категории."""
 
     def __init__(self, category: Category):
         self._category = category
@@ -120,7 +129,6 @@ class CategoryIterator:
         return self
 
     def __next__(self):
-        # Используем публичный метод вместо прямого доступа к приватному атрибуту
         products = self._category.get_products()
         if self._index < len(products):
             product = products[self._index]
@@ -130,10 +138,6 @@ class CategoryIterator:
 
 
 def load_products_from_json(file_path: str) -> List[Category]:
-    """
-    Загружает категории и товары из JSON-файла, создаёт объекты.
-    Если файл не найден, возвращает пустой список.
-    """
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
