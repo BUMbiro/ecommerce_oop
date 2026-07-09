@@ -1,6 +1,7 @@
 """
 Тесты для всех классов: Product, Category, Smartphone, LawnGrass, BaseProduct, Order.
 """
+import inspect
 import json
 import tempfile
 import os
@@ -181,9 +182,9 @@ def test_add_product_to_category_wrong_type():
 
 
 # ---------- Новые тесты для абстрактного класса и миксина ----------
+
 def test_abstract_base_product_cannot_instantiate():
-    with pytest.raises(TypeError):
-        BaseProduct()  # type: ignore
+    assert inspect.isabstract(BaseProduct) is True
 
 
 def test_product_inherits_base_product():
