@@ -1,10 +1,11 @@
 """
 Тесты для всех классов: Product, Category, Smartphone, LawnGrass, BaseProduct, Order.
+Добавлены тесты для проверки исключений и middle_price.
 """
-import inspect
 import json
 import tempfile
 import os
+import inspect
 import pytest
 from src.products import (
     Product,
@@ -148,7 +149,7 @@ def test_category_iterator_empty():
     assert list(it) == []
 
 
-# ---------- Тесты для наследников (из прошлой домашки) ----------
+# ---------- Тесты для наследников ----------
 def test_smartphone_creation():
     phone = Smartphone("Samsung", "Флагман", 1000.0, 5, 95.5, "S23", 256, "Черный")
     assert phone.efficiency == 95.5
@@ -181,8 +182,7 @@ def test_add_product_to_category_wrong_type():
         cat.add_product(123)
 
 
-# ---------- Новые тесты для абстрактного класса и миксина ----------
-
+# ---------- Тесты для абстрактного класса и миксина ----------
 def test_abstract_base_product_cannot_instantiate():
     assert inspect.isabstract(BaseProduct) is True
 
@@ -192,24 +192,18 @@ def test_product_inherits_base_product():
 
 
 def test_log_mixin_output(capsys):
-    # Создаём объекты, чтобы проверить вывод – используем их в assert
     p = Product("Тест", "Описание", 100, 5)
     captured = capsys.readouterr()
     assert "Product('Тест', 'Описание', 100, 5)" in captured.out
 
     s = Smartphone("Samsung", "Флагман", 1000, 5, 95.5, "S23", 256, "Черный")
     captured = capsys.readouterr()
-    assert (
-        "Smartphone('Samsung', 'Флагман', 1000, 5, 95.5, 'S23', 256, 'Черный')"
-        in captured.out
-    )
+    assert "Smartphone('Samsung', 'Флагман', 1000, 5, 95.5, 'S23', 256, 'Черный')" in captured.out
 
-    # Чтобы убрать warning о неиспользуемых переменных – используем их
     assert p.name == "Тест"
     assert s.model == "S23"
 
 
-# ---------- Тесты для Order (доп. задание) ----------
 def test_order_creation():
     p = Product("Ноутбук", "Игровой", 1500, 2)
     order = Order(p, 3)
@@ -223,3 +217,43 @@ def test_category_inherits_base_model():
     assert issubclass(Category, BaseModel)
     cat = Category("Электроника", "Описание", [])
     assert isinstance(cat, BaseModel)
+
+
+# ---------- Новые тесты для исключений ----------
+
+def test_product_zero_quantity_raises():
+    with pytest.raises(ValueError, match="Товар с нулевым количеством не может быть добавлен"):
+        Product("Тест", "Описание", 100.0, 0)
+
+
+def test_category_middle_price():
+    p1 = Product("Товар1", "", 100.0, 2)
+    p2 = Product("Товар2", "", 200.0, 3)
+    cat = Category("Категория", "Описание", [p1, p2])
+    assert cat.middle_price() == 150.0
+
+
+def test_category_middle_price_empty():
+    cat = Category("Пустая", "Описание", [])
+    assert cat.middle_price() == 0.0
+
+
+def test_add_product_zero_quantity_handled(capsys):
+    cat = Category("Категория", "Описание", [])
+    p = Product("Тест", "", 100.0, 1)
+    p._quantity = 0
+    cat.add_product(p)
+    captured = capsys.readouterr()
+    assert "Ошибка: Товар с нулевым количеством не может быть добавлен" in captured.out
+    assert "Обработка добавления товара завершена" in captured.out
+    assert len(cat.get_products()) == 0
+
+
+def test_order_zero_quantity_handled(capsys):
+    p = Product("Тест", "", 100.0, 1)
+    p._quantity = 0
+    order = Order(p, 2)
+    captured = capsys.readouterr()
+    assert "Ошибка: Товар с нулевым количеством не может быть в заказе" in captured.out
+    assert "Обработка создания заказа завершена" in captured.out
+    assert order.product is None
