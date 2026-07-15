@@ -1,6 +1,7 @@
 """
 Модуль с классами: абстрактный BaseProduct, миксин LogMixin,
 Product, Smartphone, LawnGrass, Category, CategoryIterator, Order (доп.).
+Добавлены: проверка нулевого количества, метод average_price, пользовательское исключение ZeroQuantityError.
 """
 import json
 from abc import ABC, abstractmethod
@@ -33,18 +34,24 @@ class BaseProduct(ABC):
 # ---------- Миксин для логирования создания ----------
 class LogMixin:
     def __init__(self, *args, **kwargs):
-        # Вызывается после того, как все атрибуты уже установлены
         print(repr(self))
+
+
+# ---------- Пользовательское исключение (доп. задание) ----------
+class ZeroQuantityError(Exception):
+    """Исключение для случая, когда товар имеет нулевое количество."""
+    pass
 
 
 # ---------- Базовый класс Product ----------
 class Product(BaseProduct, LogMixin):
     def __init__(self, name: str, description: str, price: float, quantity: int):
+        if quantity == 0:
+            raise ValueError("Товар с нулевым количеством не может быть добавлен")
         self._name = name
         self._description = description
         self.__price = price
         self._quantity = quantity
-        # Вызываем LogMixin.__init__ (он напечатает repr)
         super().__init__()
 
     @property
@@ -76,6 +83,9 @@ class Product(BaseProduct, LogMixin):
         description = product_data['description']
         price = product_data['price']
         quantity = product_data['quantity']
+        # Проверка количества при создании через new_product
+        if quantity == 0:
+            raise ValueError("Товар с нулевым количеством не может быть добавлен")
         if existing_products is not None:
             for existing in existing_products:
                 if existing.name.lower() == name.lower():
@@ -104,7 +114,6 @@ class Product(BaseProduct, LogMixin):
 class Smartphone(Product):
     def __init__(self, name: str, description: str, price: float, quantity: int,
                  efficiency: float, model: str, memory: int, color: str):
-        # Сначала устанавливаем свои атрибуты, потом вызываем родителя
         self.efficiency = efficiency
         self.model = model
         self.memory = memory
@@ -120,7 +129,6 @@ class Smartphone(Product):
 class LawnGrass(Product):
     def __init__(self, name: str, description: str, price: float, quantity: int,
                  country: str, germination_period: str, color: str):
-        # Сначала устанавливаем свои атрибуты, потом вызываем родителя
         self.country = country
         self.germination_period = germination_period
         self.color = color
@@ -166,10 +174,20 @@ class Category(BaseModel):
         return self._description
 
     def add_product(self, product: object) -> None:
+        """Добавляет продукт в категорию. Проверяет тип и количество (доп. задание)."""
         if not isinstance(product, Product):
             raise TypeError("В категорию можно добавлять только объекты Product или его наследников")
-        self.__products.append(product)
-        Category.product_count += 1
+        try:
+            if product.quantity == 0:
+                raise ZeroQuantityError("Товар с нулевым количеством не может быть добавлен")
+            self.__products.append(product)
+            Category.product_count += 1
+        except ZeroQuantityError as e:
+            print(f"Ошибка: {e}")
+        else:
+            print("Товар добавлен")
+        finally:
+            print("Обработка добавления товара завершена")
 
     @property
     def products(self) -> str:
@@ -185,8 +203,15 @@ class Category(BaseModel):
     def __iter__(self):
         return CategoryIterator(self)
 
+    def middle_price(self) -> float:
+        """Возвращает среднюю цену всех товаров в категории. Если товаров нет – возвращает 0."""
+        try:
+            total = sum(p.price for p in self.__products)
+            return total / len(self.__products)
+        except ZeroDivisionError:
+            return 0.0
 
-# ---------- Итератор ----------
+
 class CategoryIterator:
     def __init__(self, category: Category):
         self._category = category
@@ -207,32 +232,47 @@ class CategoryIterator:
 # ---------- Заказ (доп. задание) ----------
 class Order(BaseModel):
     def __init__(self, product: Product, quantity: int):
-        self._product = product
-        self._quantity = quantity
-        self._total_price = product.price * quantity
+        try:
+            if product.quantity == 0:
+                raise ZeroQuantityError("Товар с нулевым количеством не может быть в заказе")
+            self._product = product
+            self._quantity = quantity
+            self._total_price = product.price * quantity
+        except ZeroQuantityError as e:
+            print(f"Ошибка: {e}")
+            # Не создаём заказ, но можно установить пустые атрибуты или оставить без
+            # В else мы не попадём, поэтому заказ не создаётся.
+        else:
+            print("Заказ создан")
+        finally:
+            print("Обработка создания заказа завершена")
 
     @property
     def name(self) -> str:
-        return f"Заказ на {self._product.name}"
+        return f"Заказ на {self._product.name}" if hasattr(self, '_product') else "Заказ не создан"
 
     @property
     def description(self) -> str:
-        return f"Товар: {self._product.name}, количество: {self._quantity}, итого: {self._total_price} руб."
+        if hasattr(self, '_product'):
+            return f"Товар: {self._product.name}, количество: {self._quantity}, итого: {self._total_price} руб."
+        return "Заказ не создан из-за ошибки"
 
     @property
-    def product(self) -> Product:
-        return self._product
+    def product(self) -> Optional[Product]:
+        return getattr(self, '_product', None)
 
     @property
     def quantity(self) -> int:
-        return self._quantity
+        return getattr(self, '_quantity', 0)
 
     @property
     def total_price(self) -> float:
-        return self._total_price
+        return getattr(self, '_total_price', 0.0)
 
     def __str__(self) -> str:
-        return f"Заказ: {self._product.name}, {self._quantity} шт., итого {self._total_price} руб."
+        if hasattr(self, '_product'):
+            return f"Заказ: {self._product.name}, {self._quantity} шт., итого {self._total_price} руб."
+        return "Заказ не создан"
 
 
 # ---------- Загрузка из JSON ----------
